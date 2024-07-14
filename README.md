@@ -1,76 +1,127 @@
-Certainly. Here's a straightforward explanation of the main cybernetic flow of the script, suitable for a GitHub README:
 
-1. Input Processing:
-   - The script accepts a JSONL file and an optional configuration file as inputs.
-   - If a configuration file is provided, it's loaded and parsed.
+# MoRe (Mixture 'o Rankers 🔥)
 
-2. JSONL Structure Analysis:
-   - The script analyzes the structure of the first item in the JSONL file.
-   - It generates a guide showing the available paths within the JSONL structure.
+## Overview
+MoRe analyzes JSONL (JSON Lines) files, compares specified fields within each JSON object, and calculates relevance scores using a combination of language models and traditional NLP techniques. It's designed to provide a robust, multi-faceted approach to assessing field relevance within structured data.
 
-3. Field Comparison Setup:
-   - Based on the configuration, the script identifies which fields to compare.
-   - It prepares for pairwise comparisons between the specified fields.
+## Features
+- JSONL structure analysis and visualization
+- Configurable field comparison
+- Multi-model relevance scoring using a diversity of local language models
+- Traditional NLP scoring methods (cosine similarity, Jaccard similarity)
+- Aggregated scoring to reduce bias and noise
+- Detailed logging of all comparisons and scores
+- Colorized console output for improved readability
 
-4. Data Processing Loop:
-   - For each item in the JSONL file:
-     a. The script extracts the values of the specified fields.
-     b. It performs pairwise comparisons between these fields.
+## Requirements
+- Python 3.6+
+~~- OpenAI API access~~
+- ollama
+- Required Python packages: 
+  - jsonlines
+  - openai
+  - numpy
+  - scikit-learn
+  - colorama
 
-5. Relevance Scoring:
-   - For each field pair:
-     a. The script uses language models (via OpenAI's API) to calculate relevance scores.
-     b. It computes additional similarity scores using cosine and Jaccard similarity.
-     c. It combines these scores to produce an overall relevance score.
+## Installation
+1. Clone this repository
+2. Install required packages:
+   ```
+   pip install jsonlines openai numpy scikit-learn colorama
+   ```
+3. Set up your OpenAI API credentials
 
-6. Logging and Output:
-   - The script logs detailed information about each comparison.
-   - It saves the processed data back to a JSONL file.
-   - It generates a separate log file with detailed scoring information.
+## Usage
+The script can be run in two modes:
 
-7. User Feedback:
-   - Throughout the process, the script provides console output to inform the user about its progress and any issues encountered.
+1. JSONL Structure Analysis:
+   ```
+   python script_name.py your_input_file.jsonl
+   ```
 
-# The script's field comparison and relevance scoring process can be broken down as follows:
+2. Full Analysis with Field Comparison and Ranking:
+   ```
+   python script_name.py your_input_file.jsonl --config your_config.json
+   ```
+   or
+   ```
+   python script_name.py --config your_config.json
+   ```
+   (if the input file is specified in the config)
 
-1. Field Extraction and Preparation:
-   - The script extracts specified fields from each JSONL item using nested key paths.
-   - It handles various data types, converting them to strings for comparison.
-   - Fields can be concatenated if they contain multiple values.
+## Configuration
+The config.json file should contain:
+- Input and output file paths
+~~- OpenAI API settings~~
+- Model configurations
+- Field comparisons to perform
+- Optional parameters like temperature layers
 
-2. Multi-Model LLM Scoring:
-   - The script utilizes multiple language models as specified in the configuration.
-   - For each model:
-     a. It creates a layered approach by adjusting the temperature:
-        - Starts with a base temperature for each model.
-        - Creates multiple "layers" by incrementally increasing the temperature.
-        - This introduces controlled variability in the model's outputs.
-     b. For each layer:
-        - It sends the field pair to the LLM, asking for a relevance score.
-        - The LLM returns a score between 0 and 1.
-   - This multi-model, multi-layer approach creates a spectrum of scores, capturing different perspectives on relevance.
+Example config.json structure:
+```json
+{
+    "input_file": "qbism_insights.jsonl",
+    "output_file": "output_ranked.jsonl",
+    "comparisons": [
+      {
+        "field1_keys": ["conversations[1].value"],
+        "field2_keys": ["conversations[2].value"]
+      }
+    ],
+    "highlight_terms": ["QBism", "quantum", "Bayesianism"],
+    "openai_base_url": "http://localhost:11434/v1",
+    "openai_api_key": "ollama",
+    "layers": 20,
+    "models": [
+      {
+        "name": "internlm2:latest",
+        "temperature": 0
+      },
+      {
+        "name": "qwen2:latest",
+        "temperature": 0
+      },
+      {
+        "name": "llama3:text",
+        "temperature": 0
+      },
+      {
+        "name": "mistral:v0.3",
+        "temperature": 0
+      },
+      {
+        "name": "PHRASE-2:latest",
+        "temperature": 0
+      },
+      {
+        "name": "gemma2:latest",
+        "temperature": 0
+      }
+    ]
+}
+```
 
-3. Traditional NLP Scoring:
-   - In parallel, the script calculates two additional similarity scores:
-     a. Cosine Similarity: Measures the cosine of the angle between vector representations of the texts.
-     b. Jaccard Similarity: Compares the overlap of unique words between the texts.
-   - These provide algorithm-based, deterministic similarity measures to complement the LLM scores.
+## Output
+The script produces two main outputs:
+1. A new JSONL file with updated 'weight' fields based on relevance scores
+2. A detailed JSON log file containing all comparison data and scores
 
-4. Score Aggregation:
-   - All valid scores (LLM scores across models and layers, cosine similarity, and Jaccard similarity) are collected.
-   - The mean of these scores is calculated to produce a final relevance score.
+## How It Works
+1. The script reads the JSONL input file and optional configuration.
+2. It analyzes and displays the structure of the JSONL data.
+3. For each item in the JSONL file, it performs the specified field comparisons.
+4. Each comparison involves:
+   - Extracting and preparing field values
+   - Calculating relevance scores using configured language models
+   - Computing traditional NLP similarity scores
+   - Aggregating all scores to produce a final relevance score
+5. The script updates the 'weight' field of each JSONL item with its average relevance score.
+6. Detailed logs are saved, and the updated JSONL is written to the output file.
 
-5. Noise Handling and Robustness:
-   - The use of multiple models and layers introduces diversity in the scoring, helping to mitigate individual model biases.
-   - The inclusion of traditional NLP scores provides a stable baseline.
-   - Taking the mean of all these diverse signals helps to smooth out potential noise or outliers from any single source.
-   - This approach makes the final score more robust and less susceptible to individual fluctuations or errors.
+## Customization
+The script is designed to be flexible. You can easily modify the `rank_relevance` function to use different prompts or scoring methods, add new similarity metrics, or adjust the way scores are aggregated.
 
-6. Comprehensive Logging:
-   - The script logs detailed information about each comparison, including:
-     - Individual model scores for each layer.
-     - Traditional NLP scores.
-     - The final aggregated score.
-   - This allows for post-hoc analysis and understanding of how different components contributed to the final score.
-
-By layering multiple LLM outputs with varying temperatures and combining them with traditional NLP techniques, the script creates a rich, multi-faceted view of relevance. The use of mean aggregation across this diverse set of signals helps to produce a more stable and noise-resistant final score, leveraging the strengths of both AI-based and algorithm-based approaches to text comparison.
+## Limitations
+- Processing large JSONL files may be time-consuming
+- The effectiveness of relevance scoring depends on the quality and relevance of the configured language models
