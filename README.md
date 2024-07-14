@@ -3,6 +3,15 @@
 ## Overview
 MoRe analyzes JSONL (JSON Lines) files, compares specified fields within each JSON object, and calculates relevance scores using a combination of language models and traditional NLP techniques. It's designed to provide a robust, multi-faceted approach to assessing field relevance within structured data.
 
+## Features
+- JSONL structure analysis and visualization
+- Configurable field comparison
+- Multi-model relevance scoring using a diversity of local language models
+- Traditional NLP scoring methods (cosine similarity, Jaccard similarity)
+- Aggregated scoring to reduce bias and noise
+- Detailed logging of all comparisons and scores
+- Colorized console output for improved readability
+
 ![image](https://github.com/user-attachments/assets/b05efae1-7a00-4845-be9f-66905e00fe12)
 
 ```results
@@ -62,15 +71,6 @@ Item 1:
       Max: 0.1500
       Mean: 0.1025
 ```
-
-## Features
-- JSONL structure analysis and visualization
-- Configurable field comparison
-- Multi-model relevance scoring using a diversity of local language models
-- Traditional NLP scoring methods (cosine similarity, Jaccard similarity)
-- Aggregated scoring to reduce bias and noise
-- Detailed logging of all comparisons and scores
-- Colorized console output for improved readability
 
 ## Requirements
 - Python 3.6+
