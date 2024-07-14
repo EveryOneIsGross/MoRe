@@ -5,6 +5,64 @@ MoRe analyzes JSONL (JSON Lines) files, compares specified fields within each JS
 
 ![image](https://github.com/user-attachments/assets/b05efae1-7a00-4845-be9f-66905e00fe12)
 
+```results
+Summary Statistics:
+
+Item 0:
+  Comparison 1:
+    interstellarninja/hermes-2-pro-llama-3-8b:latest:
+      Min: 0.8500
+      Max: 1.0000
+      Mean: 0.9625
+    qwen2:latest:
+      Min: 0.9500
+      Max: 1.0000
+      Mean: 0.9890
+    llama3:text:
+      Min: 0.0000
+      Max: 0.9800
+      Mean: 0.5492
+    mistral:v0.3:
+      Min: 1.0000
+      Max: 1.0000
+      Mean: 1.0000
+    PHRASE-2:latest:
+      Min: 0.5000
+      Max: 1.0000
+      Mean: 0.8484
+    gemma2:latest:
+      Min: 0.9500
+      Max: 1.0000
+      Mean: 0.9930
+
+Item 1:
+  Comparison 1:
+    interstellarninja/hermes-2-pro-llama-3-8b:latest:
+      Min: 0.0100
+      Max: 0.2500
+      Mean: 0.1065
+    qwen2:latest:
+      Min: 0.0000
+      Max: 0.2500
+      Mean: 0.1100
+    llama3:text:
+      Min: 0.0000
+      Max: 1.0000
+      Mean: 0.3474
+    mistral:v0.3:
+      Min: 0.1000
+      Max: 0.2500
+      Mean: 0.1575
+    PHRASE-2:latest:
+      Min: 0.0000
+      Max: 1.0000
+      Mean: 0.1368
+    gemma2:latest:
+      Min: 0.1000
+      Max: 0.1500
+      Mean: 0.1025
+```
+
 ## Features
 - JSONL structure analysis and visualization
 - Configurable field comparison
