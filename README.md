@@ -1,7 +1,11 @@
 # MoRe (Mixture 'o Rankers 🔥)
 
 ## Overview
-MoRe analyzes JSONL (JSON Lines) files, compares specified fields within each JSON object, and calculates relevance scores using a combination of language models and traditional NLP techniques. It's designed to provide a robust, multi-faceted approach to assessing field relevance within structured data.
+MoRe analyzes JSONL (JSON Lines) files, compares specified fields within each JSON object, and calculates relevance scores using a combination of language models and traditional NLP techniques. It's designed to provide a holistic(?) approach to assessing field relevance within structured data.
+
+## WIP
+
+- Add system prompts for expert personas per model too 
 
 ## Features
 - JSONL structure analysis and visualization
