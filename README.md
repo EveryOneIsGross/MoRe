@@ -183,5 +183,5 @@ The script produces two main outputs:
 The script is designed to be flexible. You can easily modify the `rank_relevance` function to use different prompts or scoring methods, add new similarity metrics, or adjust the way scores are aggregated.
 
 ## Limitations
-- Processing large JSONL files may be time-consuming
-- The effectiveness of relevance scoring depends on the quality and relevance of the configured language models
+- Current effectiveness of relevance scoring will depend on your dataset.
+- Scores values from NLP and prompts are toy examples and need finetuning.
