@@ -15,7 +15,7 @@ MoRe analyzes JSONL (JSON Lines) files, compares specified fields within each JS
 
 ## Requirements
 - Python 3.6+
-~~- OpenAI API access~~
+- ~~- OpenAI API access~~
 - ollama
 - Required Python packages: 
   - jsonlines
@@ -30,7 +30,7 @@ MoRe analyzes JSONL (JSON Lines) files, compares specified fields within each JS
    ```
    pip install jsonlines openai numpy scikit-learn colorama
    ```
-3. Set up your OpenAI API credentials
+3. Craft a config.json to define your llms, files, and target pairwise array.
 
 ## Usage
 The script can be run in two modes:
@@ -53,7 +53,8 @@ The script can be run in two modes:
 ## Configuration
 The config.json file should contain:
 - Input and output file paths
-~~- OpenAI API settings~~
+- ~~- OpenAI API settings~~
+- ollama localhost
 - Model configurations
 - Field comparisons to perform
 - Optional parameters like temperature layers
