@@ -48,12 +48,12 @@ def plot_limited_charts(log_file, n_charts, random_selection=False):
             for model, model_data in comparison['models'].items():
                 scores = [layer['score'] for layer in model_data['layers']]
                 print(f"    {model}:")
-                print(f"      Min: {min(scores):.4f}")
-                print(f"      Max: {max(scores):.4f}")
-                print(f"      Mean: {sum(scores)/len(scores):.4f}")
+                print(f"      Min: {min(scores):.2f}")
+                print(f"      Max: {max(scores):.2f}")
+                print(f"      Mean: {sum(scores)/len(scores):.2f}")
 
 # Usage
-log_file = 'output_ranked_log.json'
+log_file = 'output_ranked_contra_log.json'
 n_charts = 3  # Set this to the number of charts you want to generate
 random_selection = True  # Set to False if you want to select the first n items instead of random
 
