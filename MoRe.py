@@ -1,5 +1,5 @@
 """
-0.1v TOY DEMO
+0.2v
 """
 
 import argparse
@@ -29,16 +29,29 @@ def load_jsonl(input_file: str) -> List[Dict]:
 def save_jsonl(output_file: str, data: List[Dict], log_data: Dict[str, Any]):
     with jsonlines.open(output_file, mode='w') as writer:
         for item, item_log in zip(data, log_data["items"]):
-            # Calculate the average relevance score for this item
-            relevance_scores = [comp["relevance_score"] for comp in item_log["comparisons"] if comp["relevance_score"] is not None]
-            if relevance_scores:
-                avg_score = np.mean(relevance_scores)
+            # Use the overall_relevance_score from item_log
+            avg_score = item_log.get("overall_relevance_score")
+            
+            if avg_score is not None:
+                # Format the score as a float with two decimal places
+                formatted_score = float(f"{avg_score:.2f}")
                 
-                # Update the 'weight' field if it exists, or add it if it doesn't
-                if 'weight' in item:
-                    item['weight'] = avg_score
+                # Update the nested 'weight' field if it exists, or add it if it doesn't
+                if 'conversations' in item and isinstance(item['conversations'], list):
+                    for conversation in item['conversations']:
+                        if 'weight' in conversation:
+                            conversation['weight'] = formatted_score
+                            break
+                    else:
+                        # If no conversation had a 'weight' key, add it to the first conversation
+                        if item['conversations']:
+                            item['conversations'][0]['weight'] = formatted_score
+                elif 'weight' in item:
+                    # If 'weight' is at the top level, update it
+                    item['weight'] = formatted_score
                 else:
-                    item['weight'] = avg_score  # or item.update({'weight': avg_score})
+                    # If 'weight' doesn't exist anywhere, add it at the top level
+                    item['weight'] = formatted_score
             
             # Write the (potentially updated) item to the JSONL file
             writer.write(item)
@@ -159,39 +172,87 @@ def print_jsonl_guide(structure: Dict[str, Any], highlight_terms_list: List[str]
 ''')
     print(f"{Fore.YELLOW}Note: Replace the example keys with the actual keys you want to compare.{Style.RESET_ALL}")
 
-def rank_relevance(client: OpenAI, model: str, temp: float, field1: str, field2: str) -> float:
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            temperature=temp,
-            messages=[
-            {"role": "system", "content": "You are a helpful assistant designed to analyze the relevance between two text fields. Your response must be a JSON object containing ONLY a 'score' key with a float value between 0 and 1, where 1 is highly relevant and 0 is not relevant at all. For example: {\"score\": 0.75}. Do not include any other keys or explanations in your response."},
-            {"role": "user", "content": f"Analyze the relevance between the following two fields and provide a score between 0 and 1:\n\nField 1: {field1}\n\nField 2: {field2}\n\nRespond with a JSON object containing only a 'score' key and its float value."}
-        ],
-            response_format={"type": "json_object"}
-        )
-        result = json.loads(response.choices[0].message.content)
-        if 'score' not in result:
-            print(f"{Fore.YELLOW}Warning: Model {model} did not return a 'score' key. Full response: {result}{Style.RESET_ALL}")
-            return None
-        return float(result['score'])
-    except Exception as e:
-        print(f"{Fore.RED}Error with model {model}: {str(e)}{Style.RESET_ALL}")
+def rank_relevance(client: OpenAI, model: str, temp: float, field1: str, field2: str, max_retries: int = 6) -> float:
+    def extract_score(data):
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if 'score' in key.lower():
+                    return parse_score(value)
+                elif isinstance(value, (dict, list)):
+                    score = extract_score(value)
+                    if score is not None:
+                        return score
+            # If no 'score' key is found, check if any value is a valid float
+            for value in data.values():
+                score = parse_score(value)
+                if score is not None:
+                    return score
+        elif isinstance(data, list):
+            for item in data:
+                score = extract_score(item)
+                if score is not None:
+                    return score
+        return parse_score(data)
+
+    def parse_score(value):
+        if isinstance(value, (int, float)):
+            return float(value)
+        elif isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                return None
         return None
 
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                temperature=temp,
+                messages=[
+                {"role": "system", "content": "You are a helpful assistant designed to analyze the relevance between two text fields. Your response must be a JSON object containing ONLY a 'score' key with a float value between 0 and 1, where 1 is highly relevant and 0 is not relevant at all. For example: {\"score\": 0.75}. Do not include any other keys or explanations in your response."},
+                {"role": "user", "content": f"Analyze the relevance between the following two fields and provide a score between 0 and 1:\n\nField 1: {field1}\n\nField 2: {field2}\n\nRespond with a JSON object containing only a 'score' key and its float value."}
+            ],
+                response_format={"type": "json_object"}
+            )
+            
+            content = response.choices[0].message.content
+            
+            # Try to parse as JSON first
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError:
+                # If JSON parsing fails, try to extract a float from the raw content
+                result = content
+
+            if not result:  # Handle empty responses
+                raise ValueError("Empty response received")
+            
+            score = extract_score(result)
+            
+            if score is not None:
+                return min(1.0, max(0.0, score))
+            
+            if attempt < max_retries - 1:
+                print(f"{Fore.YELLOW}Warning: Attempt {attempt + 1} failed. Retrying...{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.RED}Error: All {max_retries} attempts failed. Last response: {result}{Style.RESET_ALL}")
+                return None
+
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"{Fore.YELLOW}Error on attempt {attempt + 1}: {str(e)}. Retrying...{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.RED}Error: All {max_retries} attempts failed. Last error: {str(e)}{Style.RESET_ALL}")
+                return None
+
+    return None
+    
 def cosine_sim(text1: str, text2: str) -> float:
     vectorizer = CountVectorizer().fit_transform([text1, text2])
     vectors = vectorizer.toarray()
-    return cosine_similarity(vectors)[0][1]
-
-def jaccard_sim(text1: str, text2: str) -> float:
-    words1 = set(text1.lower().split())
-    words2 = set(text2.lower().split())
-    
-    intersection = len(words1.intersection(words2))
-    union = len(words1.union(words2))
-    
-    return intersection / union if union > 0 else 0
+    similarity = cosine_similarity(vectors)[0][1]
+    return min(1.0, max(0.0, similarity))
 
 def truncate_text(text: str, max_length: int = 50) -> str:
     """Truncate text to a maximum length, adding ellipsis if truncated."""
@@ -287,7 +348,8 @@ def main(input_file: str = None, config_file: str = None):
                             model_name,
                             temp,
                             field1,
-                            field2
+                            field2,
+                            max_retries=3
                         )
                         if score is not None:
                             llm_scores.append(score)
@@ -296,48 +358,52 @@ def main(input_file: str = None, config_file: str = None):
                                 "temperature": temp,
                                 "score": score
                             })
-                            print(f"{Fore.MAGENTA}{model_name}{Style.RESET_ALL} (Layer {layer}, Temp {temp:.2f}): Score = {Fore.YELLOW}{score:.4f}{Style.RESET_ALL}")
+                            print(f"{Fore.MAGENTA}{model_name}{Style.RESET_ALL} (Layer {layer}, Temp {temp:.2f}): Score = {Fore.YELLOW}{score:.2f}{Style.RESET_ALL}")
+                        else:
+                            print(f"{Fore.RED}Failed to get a valid score for {model_name} (Layer {layer}, Temp {temp:.2f}){Style.RESET_ALL}")
 
-                # Calculate additional NLP scores
                 try:
                     cosine_score = cosine_sim(field1, field2)
-                    jaccard_score = jaccard_sim(field1, field2)
-                    print(f"{Fore.BLUE}Cosine Similarity:{Style.RESET_ALL} {cosine_score:.4f}")
-                    print(f"{Fore.BLUE}Jaccard Similarity:{Style.RESET_ALL} {jaccard_score:.4f}")
+                    print(f"{Fore.BLUE}Cosine Similarity:{Style.RESET_ALL} {cosine_score:.2f}")
+                    comp_log["cosine_similarity"] = cosine_score
                 except Exception as e:
-                    print(f"{Fore.RED}Error calculating NLP scores: {str(e)}{Style.RESET_ALL}")
-                    cosine_score = jaccard_score = None
+                    print(f"{Fore.RED}Error calculating NLP score: {str(e)}{Style.RESET_ALL}")
+                    cosine_score = None
                 
                 # Combine all scores
-                all_scores = [score for score in llm_scores + [cosine_score, jaccard_score] if score is not None]
+                all_scores = [score for score in llm_scores + [cosine_score] if score is not None]
                 
                 if all_scores:
                     avg_score = np.mean(all_scores)
+                    comp_log["overall_relevance_score"] = avg_score
                 else:
                     avg_score = None
+                    comp_log["overall_relevance_score"] = None
                 
-                print(f"{Fore.GREEN}Overall Relevance Score:{Style.RESET_ALL} {avg_score:.4f}" if avg_score is not None else f"{Fore.RED}Overall Relevance Score: N/A{Style.RESET_ALL}")
+                print(f"{Fore.GREEN}Overall Relevance Score:{Style.RESET_ALL} {avg_score:.2f}" if avg_score is not None else f"{Fore.RED}Overall Relevance Score: N/A{Style.RESET_ALL}")
 
-                comp_log.update({
-                    "relevance_score": avg_score,
-                    "llm_score": np.mean(llm_scores) if llm_scores else None,
-                    "cosine_score": cosine_score,
-                    "jaccard_score": jaccard_score
-                })
-
+                # Add the comp_log to item_log["comparisons"]
                 item_log["comparisons"].append(comp_log)
 
+            # Calculate the average relevance score for this item
+            item_relevance_scores = [comp["overall_relevance_score"] for comp in item_log["comparisons"] if comp["overall_relevance_score"] is not None]
+            if item_relevance_scores:
+                item_avg_score = np.mean(item_relevance_scores)
+                item_log["overall_relevance_score"] = item_avg_score
+            else:
+                item_log["overall_relevance_score"] = None
+
+            # After processing all comparisons for an item, append item_log to log_data["items"]
             log_data["items"].append(item_log)
 
+        # After processing all items, save the JSONL and log files
         save_jsonl(output_file, data, log_data)
-        print(f"\n{Fore.GREEN}Ranked data saved to {output_file}{Style.RESET_ALL}")
-
         save_log(log_data, log_file)
-        print(f"{Fore.GREEN}Log data saved to {log_file}{Style.RESET_ALL}")
 
-        print(f"\n{Fore.CYAN}To plot the results, you can use the following Python script:{Style.RESET_ALL}")
+        print(f"\n{Fore.GREEN}Processing complete. Output saved to {output_file} and log saved to {log_file}{Style.RESET_ALL}")
     else:
         print(f"{Fore.YELLOW}No config file provided. JSONL structure analysis complete.{Style.RESET_ALL}")
+
 
 
 if __name__ == "__main__":
