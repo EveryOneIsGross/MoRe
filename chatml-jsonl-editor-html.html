@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatML JSONL Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        #editor {
+            margin-top: 20px;
+        }
+        #tabs {
+            margin-top: 20px;
+        }
+        button {
+            margin-right: 10px;
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #e0e0e0;
+        }
+        .field {
+            margin-bottom: 10px;
+        }
+        .field label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .field input, .field textarea {
+            width: 100%;
+            padding: 5px;
+        }
+        .field textarea {
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ChatML JSONL Editor</h1>
+    <input type="file" id="loadFile" accept=".jsonl">
+    <button onclick="loadJSONL()">Load JSONL</button>
+    <button onclick="saveJSONL()">Save JSONL</button>
+    <button onclick="newJSONL()">New JSONL File</button>
+    <button onclick="addNewItem()">Add New Item</button>
+    <div id="tabs"></div>
+    <div id="editor"></div>
+
+    <script>
+        let jsonlData = [];
+        let currentItemIndex = 0;
+
+        function loadJSONL() {
+            const file = document.getElementById('loadFile').files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    jsonlData = content.split('\n').filter(line => line.trim() !== '').map(JSON.parse);
+                    displayJSONL();
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function displayJSONL() {
+            const tabsDiv = document.getElementById('tabs');
+            tabsDiv.innerHTML = '';
+            jsonlData.forEach((item, index) => {
+                const button = document.createElement('button');
+                button.textContent = `Item ${index + 1}`;
+                button.onclick = () => {
+                    currentItemIndex = index;
+                    displayItem(item);
+                };
+                tabsDiv.appendChild(button);
+            });
+            if (jsonlData.length > 0) {
+                displayItem(jsonlData[0]);
+            }
+        }
+
+        function displayItem(item) {
+            const editor = document.getElementById('editor');
+            editor.innerHTML = '';
+
+            // ID field
+            addField(editor, 'id', item.id || '', 'number');
+
+            // Conversations
+            const conversationsDiv = document.createElement('div');
+            conversationsDiv.innerHTML = '<h2>Conversations</h2>';
+            editor.appendChild(conversationsDiv);
+            if (item.conversations && Array.isArray(item.conversations)) {
+                item.conversations.forEach((conv, index) => {
+                    addField(conversationsDiv, `conversations[${index}].from`, conv.from);
+                    addField(conversationsDiv, `conversations[${index}].value`, conv.value, 'textarea');
+                    if (conv.weight !== undefined) {
+                        addField(conversationsDiv, `conversations[${index}].weight`, conv.weight, 'number');
+                    }
+                });
+            }
+
+            // Docs
+            const docsDiv = document.createElement('div');
+            docsDiv.innerHTML = '<h2>Docs</h2>';
+            editor.appendChild(docsDiv);
+            if (item.docs && Array.isArray(item.docs)) {
+                item.docs.forEach((doc, index) => {
+                    addField(docsDiv, `docs[${index}].content`, doc.content, 'textarea');
+                    addField(docsDiv, `docs[${index}].source`, doc.source);
+                    addField(docsDiv, `docs[${index}].start`, doc.start, 'number');
+                    addField(docsDiv, `docs[${index}].end`, doc.end, 'number');
+                    addField(docsDiv, `docs[${index}].relevance`, doc.relevance, 'number');
+                });
+            }
+        }
+
+        function addField(parent, key, value, type = 'text') {
+            const field = document.createElement('div');
+            field.className = 'field';
+            const label = document.createElement('label');
+            label.textContent = key;
+            const input = type === 'textarea' ? document.createElement('textarea') : document.createElement('input');
+            input.type = type;
+            input.value = value;
+            input.onchange = () => updateField(key, input.value);
+            field.appendChild(label);
+            field.appendChild(input);
+            parent.appendChild(field);
+        }
+
+        function updateField(key, value) {
+            let current = jsonlData[currentItemIndex];
+            const keys = key.split('.');
+            for (let i = 0; i < keys.length - 1; i++) {
+                let k = keys[i];
+                let index = k.match(/\[(\d+)\]/);
+                if (index) {
+                    k = k.split('[')[0];
+                    index = parseInt(index[1]);
+                    if (!current[k]) current[k] = [];
+                    if (!current[k][index]) current[k][index] = {};
+                    current = current[k][index];
+                } else {
+                    if (!current[k]) current[k] = {};
+                    current = current[k];
+                }
+            }
+            current[keys[keys.length - 1]] = value;
+        }
+
+        function saveJSONL() {
+            const content = jsonlData.map(item => JSON.stringify(item)).join('\n');
+            const blob = new Blob([content], { type: 'application/jsonl' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'data.jsonl';
+            a.click();
+        }
+
+        function newJSONL() {
+            jsonlData = [];
+            displayJSONL();
+        }
+
+        function addNewItem() {
+            jsonlData.push({conversations: [], docs: [], id: jsonlData.length + 1});
+            displayJSONL();
+        }
+    </script>
+</body>
+</html>
