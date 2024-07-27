@@ -11,7 +11,7 @@ MoRe analyzes JSONL (JSON Lines) files, compares specified fields within each JS
 - JSONL structure analysis and visualization
 - Configurable field comparison
 - Multi-model relevance scoring using a diversity of local language models
-- Traditional NLP scoring methods (cosine similarity, Jaccard similarity)
+- Traditional NLP scoring methods (cosine similarity)
 - Aggregated scoring to reduce bias and noise
 - Detailed logging of all comparisons and scores
 - Colorized console output for improved readability
